@@ -86,17 +86,17 @@ class MainActivity : AppCompatActivity() {
         val totalProductos = productos.size
         var totalPrecio = 0f
 
-        // Sumar los precios de manera segura
         for (producto in productos) {
+            val cantidadInt = producto.cantidad.toIntOrNull() ?: 1 // Si no hay cantidad, asume 1
             val precioFloat = producto.precio.toFloatOrNull()
             if (precioFloat != null) {
-                totalPrecio += precioFloat
+                totalPrecio += precioFloat * cantidadInt // Multiplica precio por cantidad
             }
         }
 
-        // Actualizar el texto de la cabecera
         tvResumen.text = "$totalProductos productos - Total: ${"%.2f".format(totalPrecio)} €"
     }
+
 
     // Función para eliminar un producto
     private fun eliminarProducto(position: Int) {
@@ -120,15 +120,41 @@ class MainActivity : AppCompatActivity() {
 
     // Manejar las acciones del menú contextual
     override fun onContextItemSelected(item: MenuItem): Boolean {
-        val info = listView.selectedItemPosition // Obtén la posición del elemento seleccionado
+        val info = item.menuInfo as AdapterView.AdapterContextMenuInfo // Obtener la información del menú contextual
+        val position = info.position // Posición del producto seleccionado
         when (item.itemId) {
             R.id.itemEliminar -> {
-                if (info >= 0) { // Asegúrate de que hay un elemento seleccionado
-                    eliminarProducto(info) // Llama a la función para eliminar el producto
-                }
+                eliminarProducto(position) // Eliminar el producto
                 return true
             }
         }
         return super.onContextItemSelected(item)
     }
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        // Guardar la lista de productos como una lista de strings concatenados
+        val productosString = productos.map { "${it.nombre},${it.cantidad},${it.precio}" }
+        outState.putStringArrayList("productos", ArrayList(productosString)) // Guardar la lista de productos
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+
+        // Recuperar la lista de productos desde los strings concatenados
+        val productosString = savedInstanceState.getStringArrayList("productos")
+
+        productos.clear() // Limpiar la lista actual
+        productosString?.forEach { productoStr ->
+            val partes = productoStr.split(",")
+            if (partes.size == 3) {
+                productos.add(Producto(partes[0], partes[1], partes[2])) // Reconstruir los productos
+            }
+        }
+
+        productoAdapter.notifyDataSetChanged() // Notificar al adaptador de los cambios
+        actualizarCabecera() // Actualizar la cabecera
+    }
+
+
 }
